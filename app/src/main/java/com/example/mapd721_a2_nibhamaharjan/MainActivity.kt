@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.provider.ContactsContract
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -90,17 +91,25 @@ fun ContactsScreen() {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             // Button to add a contact
-            Button(onClick = {
-                addContact(contactName, contactNumber, context)
-                contacts = loadContacts(context)
-            }) {
-                Text("Add Contact")
+            Button(
+                onClick = {
+                    addContact(contactName, contactNumber, context)
+                    contacts = loadContacts(context)
+                },
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primary)
+            ) {
+                Text("Add Contact", color = MaterialTheme.colorScheme.onPrimary)
             }
             // Button to fetch contacts
-            Button(onClick = {
-                contacts = loadContacts(context)
-            }) {
-                Text("Fetch Contacts")
+            Button(
+                onClick = {
+                    contacts = loadContacts(context)
+                },
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primary)
+            ) {
+                Text("Fetch Contacts", color = MaterialTheme.colorScheme.onPrimary)
             }
         }
         // Contacts List
