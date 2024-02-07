@@ -1,6 +1,8 @@
 package com.example.mapd721_a2_nibhamaharjan
 
 import android.annotation.SuppressLint
+import android.content.ContentProviderOperation
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.ContactsContract
 import androidx.activity.ComponentActivity
@@ -8,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -15,6 +18,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.mapd721_a2_nibhamaharjan.ui.theme.MAPD721A2NibhaMaharjanTheme
@@ -42,6 +47,12 @@ fun ContactsScreen() {
     var contacts by remember { mutableStateOf(emptyList<Contact>()) }
     val context = LocalContext.current as ComponentActivity
 
+    // Request permission when the screen is launched
+    DisposableEffect(context) {
+        requestWriteContactsPermission(context)
+        onDispose { /* cleanup */ }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -58,11 +69,19 @@ fun ContactsScreen() {
         )
         OutlinedTextField(
             value = contactNumber,
-            onValueChange = { contactNumber = it },
+            onValueChange = {
+                // Filter out non-digit characters and limit to 10 digits
+                contactNumber = it.filter { char -> char.isDigit() }.take(10)
+            },
             label = { Text("Contact Number") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number
+            ),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp)
+                .padding(bottom = 16.dp),
+            maxLines = 1
         )
         Row(
             modifier = Modifier
@@ -71,7 +90,10 @@ fun ContactsScreen() {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             // Button to add a contact
-            Button(onClick = { addContact(contactName, contactNumber, contacts) }) {
+            Button(onClick = {
+                addContact(contactName, contactNumber, context)
+                contacts = loadContacts(context)
+            }) {
                 Text("Add Contact")
             }
             // Button to fetch contacts
@@ -147,8 +169,44 @@ fun loadContacts(context: ComponentActivity): List<Contact> {
     return contacts
 }
 
-fun addContact(name: String, number: String, currentContacts: List<Contact>) {
-    // TODO: Implement adding contact logic here
+fun requestWriteContactsPermission(context: ComponentActivity) {
+    if (context.checkSelfPermission(android.Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+        context.requestPermissions(arrayOf(android.Manifest.permission.WRITE_CONTACTS), 1)
+    }
+}
+
+fun addContact(name: String, number: String, context: ComponentActivity) {
+    val ops = ArrayList<ContentProviderOperation>()
+
+    ops.add(
+        ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
+            .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
+            .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null)
+            .build()
+    )
+
+    ops.add(
+        ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+            .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, name)
+            .build()
+    )
+
+    ops.add(
+        ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+            .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, number)
+            .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
+            .build()
+    )
+
+    try {
+        context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
 }
 
 @Preview(showBackground = true)
