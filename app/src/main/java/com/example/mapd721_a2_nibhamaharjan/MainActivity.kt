@@ -1,3 +1,6 @@
+//Name: Nibha Maharjan
+//Student ID: 301282952
+//Assignment 2
 package com.example.mapd721_a2_nibhamaharjan
 
 import android.annotation.SuppressLint
